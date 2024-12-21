@@ -100,11 +100,11 @@ def _generate_server_certificate(server_key, root_cert_obj, root_key, cert_info)
         datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=365)
     ).add_extension(
         x509.BasicConstraints(ca=False, path_length=None), critical=True,
-    ).add_extension(
-    x509.SubjectAlternativeName([
-        x509.IPAddress(ipaddress.IPv4Address(cert_info.common_name))
-    ]),
-    critical=True,).sign(root_key, hashes.SHA256(), default_backend())
+    ).add_extension( san,
+        critical=True,).sign(root_key, hashes.SHA256(), default_backend())
+    
+    san_extension = server_cert.extensions[-1].value  # Access the last extension added
+    print("SAN:", san_extension)
 
     return server_cert.public_bytes(serialization.Encoding.PEM)
 

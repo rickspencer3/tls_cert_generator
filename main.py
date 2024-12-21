@@ -98,9 +98,9 @@ def _generate_server_certificate(server_key, root_cert_obj, root_key, cert_info)
         x509.BasicConstraints(ca=False, path_length=None), critical=True,
     ).add_extension(
     x509.SubjectAlternativeName([
-        x509.IPAddress(ipaddress.IPv4Address(cert_info.common_name))
+        x509.IPAddress(ipaddress.IPv4Address(cert_info))
     ]),
-    critical=False,).sign(root_key, hashes.SHA256(), default_backend())
+    critical=True,).sign(root_key, hashes.SHA256(), default_backend())
 
     return server_cert.public_bytes(serialization.Encoding.PEM)
 

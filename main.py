@@ -81,7 +81,11 @@ def _generate_server_certificate(server_key, root_cert_obj, root_key, cert_info)
         x509.NameAttribute(NameOID.ORGANIZATION_NAME, cert_info.organization),
         x509.NameAttribute(NameOID.COMMON_NAME, cert_info.common_name),
     ])
-
+    san = x509.SubjectAlternativeName([
+        x509.IPAddress(ipaddress.IPv4Address(cert_info.common_name))
+    ])
+    print(f"Adding SAN: {san}")
+    
     server_cert = x509.CertificateBuilder().subject_name(
         subject
     ).issuer_name(

@@ -17,6 +17,7 @@ class CertInfo:
     locality: str
     organization: str
     common_name: str
+    ca_name: str
     def __str__(self):
         return (
             f"Certificate Information:\n"
@@ -24,7 +25,8 @@ class CertInfo:
             f"  Province: {self.province}\n"
             f"  Locality: {self.locality}\n"
             f"  Organization: {self.organization}\n"
-            f"  Common Name: {self.common_name}"
+            f"  Common Name: {self.common_name}\n"
+            f"  Certificate Authority: {self.ca_name}"
         )
 
 def _generate_private_key():
@@ -38,7 +40,7 @@ def _generate_private_key():
     )
     return key
 
-def _generate_root_certificate(root_key, cert_info):
+def _generate_root_certificate(*, root_key, cert_info):
     """
     Generates a self-signed root certificate using the provided private key.
     Returns the certificate object and its serialized PEM format.
@@ -49,7 +51,7 @@ def _generate_root_certificate(root_key, cert_info):
         x509.NameAttribute(NameOID.STATE_OR_PROVINCE_NAME, cert_info.province),
         x509.NameAttribute(NameOID.LOCALITY_NAME, cert_info.locality),
         x509.NameAttribute(NameOID.ORGANIZATION_NAME, cert_info.organization),
-        x509.NameAttribute(NameOID.COMMON_NAME, cert_info.common_name),
+        x509.NameAttribute(NameOID.COMMON_NAME, cert_info.ca_name),
     ])
 
     root_cert = x509.CertificateBuilder().subject_name(
@@ -70,7 +72,7 @@ def _generate_root_certificate(root_key, cert_info):
 
     return root_cert, root_cert.public_bytes(serialization.Encoding.PEM)
 
-def _generate_server_certificate(server_key, root_cert_obj, root_key, cert_info):
+def _generate_server_certificate(*, server_key, root_cert_obj, root_key, cert_info):
     """
     Generates a server certificate signed by the provided root certificate.
     """
@@ -123,13 +125,17 @@ def _main(cert_info, output_dir="./certs"):
 
     # Generate root key and self-signed root certificate
     root_key = _generate_private_key()
-    root_cert_obj, root_cert_pem = _generate_root_certificate(root_key, cert_info)
+    root_cert_obj, root_cert_pem = _generate_root_certificate(root_key=root_key,
+                                                              cert_info=cert_info)
 
     # Generate server key
     server_key = _generate_private_key()
 
     # Generate server certificate signed by the root certificate
-    server_cert = _generate_server_certificate(server_key, root_cert_obj, root_key, cert_info)
+    server_cert = _generate_server_certificate(server_key=server_key,
+                                               root_cert_obj=root_cert_obj,
+                                               root_key=root_key,
+                                               cert_info=cert_info)
 
     # Convert keys to PEM format for saving
     root_key_pem = root_key.private_bytes(
@@ -158,6 +164,7 @@ def _parse_args():
     parser.add_argument("--locality", required=True, help="Locality or city")
     parser.add_argument("--organization", required=True, help="Organization name")
     parser.add_argument("--common_name", required=True, help="Common name (domain)")
+    parser.add_argument("--ca_name", required=True, help="Name to use as the CA in the root certificate")
     return parser.parse_args()
 
 if __name__ == "__main__":
@@ -168,6 +175,7 @@ if __name__ == "__main__":
         locality=args.locality,
         organization=args.organization,
         common_name=args.common_name,
+        ca_name=args.ca_name
     )
     print(cert_info)
     _main(cert_info)

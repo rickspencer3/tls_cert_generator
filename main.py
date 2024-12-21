@@ -101,7 +101,7 @@ def _generate_server_certificate(server_key, root_cert_obj, root_key, cert_info)
     ).add_extension(
         x509.BasicConstraints(ca=False, path_length=None), critical=True,
     ).add_extension( san,
-        critical=True,).sign(root_key, hashes.SHA256(), default_backend())
+        critical=False,).sign(root_key, hashes.SHA256(), default_backend())
     
     san_extension = server_cert.extensions[-1].value  # Access the last extension added
     print("SAN:", san_extension)

@@ -17,8 +17,17 @@ class CertInfo:
     locality: str
     organization: str
     common_name: str
+    def __str__(self):
+        return (
+            f"Certificate Information:\n"
+            f"  Country: {self.country}\n"
+            f"  Province: {self.province}\n"
+            f"  Locality: {self.locality}\n"
+            f"  Organization: {self.organization}\n"
+            f"  Common Name: {self.common_name}"
+        )
 
-def generate_private_key():
+def _generate_private_key():
     """
     Generates a private RSA key.
     """
@@ -29,7 +38,7 @@ def generate_private_key():
     )
     return key
 
-def generate_root_certificate(root_key, cert_info):
+def _generate_root_certificate(root_key, cert_info):
     """
     Generates a self-signed root certificate using the provided private key.
     Returns the certificate object and its serialized PEM format.
@@ -52,16 +61,16 @@ def generate_root_certificate(root_key, cert_info):
     ).serial_number(
         x509.random_serial_number()
     ).not_valid_before(
-        datetime.datetime.utcnow()
+        datetime.datetime.now(datetime.timezone.utc)
     ).not_valid_after(
-        datetime.datetime.utcnow() + datetime.timedelta(days=365)
+        datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=365)
     ).add_extension(
         x509.BasicConstraints(ca=True, path_length=None), critical=True,
     ).sign(root_key, hashes.SHA256(), default_backend())
 
     return root_cert, root_cert.public_bytes(serialization.Encoding.PEM)
 
-def generate_server_certificate(server_key, root_cert_obj, root_key, cert_info):
+def _generate_server_certificate(server_key, root_cert_obj, root_key, cert_info):
     """
     Generates a server certificate signed by the provided root certificate.
     """
@@ -82,9 +91,9 @@ def generate_server_certificate(server_key, root_cert_obj, root_key, cert_info):
     ).serial_number(
         x509.random_serial_number()
     ).not_valid_before(
-        datetime.datetime.utcnow()
+        datetime.datetime.now(datetime.timezone.utc)
     ).not_valid_after(
-        datetime.datetime.utcnow() + datetime.timedelta(days=365)
+        datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=365)
     ).add_extension(
         x509.BasicConstraints(ca=False, path_length=None), critical=True,
     ).add_extension(
@@ -95,7 +104,7 @@ def generate_server_certificate(server_key, root_cert_obj, root_key, cert_info):
 
     return server_cert.public_bytes(serialization.Encoding.PEM)
 
-def save_to_file(data, filename):
+def _save_to_file(data, filename):
     """
     Saves the given data to a file.
     """
@@ -103,20 +112,20 @@ def save_to_file(data, filename):
     with open(filename, 'wb') as f:
         f.write(data)
 
-def main(cert_info, output_dir="./certs"):
+def _main(cert_info, output_dir="./certs"):
 
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
     # Generate root key and self-signed root certificate
-    root_key = generate_private_key()
-    root_cert_obj, root_cert_pem = generate_root_certificate(root_key, cert_info)
+    root_key = _generate_private_key()
+    root_cert_obj, root_cert_pem = _generate_root_certificate(root_key, cert_info)
 
     # Generate server key
-    server_key = generate_private_key()
+    server_key = _generate_private_key()
 
     # Generate server certificate signed by the root certificate
-    server_cert = generate_server_certificate(server_key, root_cert_obj, root_key, cert_info)
+    server_cert = _generate_server_certificate(server_key, root_cert_obj, root_key, cert_info)
 
     # Convert keys to PEM format for saving
     root_key_pem = root_key.private_bytes(
@@ -132,12 +141,13 @@ def main(cert_info, output_dir="./certs"):
     )
 
     # Save files
-    save_to_file(root_key_pem, os.path.join(output_dir, "root_key.pem"))
-    save_to_file(root_cert_pem, os.path.join(output_dir, "root_cert.pem"))
-    save_to_file(server_key_pem, os.path.join(output_dir, "server_key.pem"))
-    save_to_file(server_cert, os.path.join(output_dir, "server_cert.pem"))
+    print("saving generated TLS files")
+    _save_to_file(root_key_pem, os.path.join(output_dir, "root_key.pem"))
+    _save_to_file(root_cert_pem, os.path.join(output_dir, "root_cert.pem"))
+    _save_to_file(server_key_pem, os.path.join(output_dir, "server_key.pem"))
+    _save_to_file(server_cert, os.path.join(output_dir, "server_cert.pem"))
 
-def parse_args():
+def _parse_args():
     parser = argparse.ArgumentParser(description="Generate TLS Certificates")
     parser.add_argument("--country", required=True, help="Country code")
     parser.add_argument("--province", required=True, help="Province or state")
@@ -147,7 +157,7 @@ def parse_args():
     return parser.parse_args()
 
 if __name__ == "__main__":
-    args = parse_args()
+    args = _parse_args()
     cert_info = CertInfo(
         country=args.country,
         province=args.province,
@@ -156,5 +166,5 @@ if __name__ == "__main__":
         common_name=args.common_name,
     )
     print(cert_info)
-    main(cert_info)
+    _main(cert_info)
 

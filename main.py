@@ -7,6 +7,16 @@ from cryptography.hazmat.backends import default_backend
 import datetime
 import os
 import ipaddress
+from dataclasses import dataclass
+import argparse
+
+@dataclass
+class CertInfo:
+    country: str
+    province: str
+    locality: str
+    organization: str
+    common_name: str
 
 def generate_private_key():
     """
@@ -19,17 +29,18 @@ def generate_private_key():
     )
     return key
 
-def generate_root_certificate(root_key):
+def generate_root_certificate(root_key, cert_info):
     """
     Generates a self-signed root certificate using the provided private key.
     Returns the certificate object and its serialized PEM format.
     """
+
     subject = issuer = x509.Name([
-        x509.NameAttribute(NameOID.COUNTRY_NAME, u"US"),
-        x509.NameAttribute(NameOID.STATE_OR_PROVINCE_NAME, u"MD"),
-        x509.NameAttribute(NameOID.LOCALITY_NAME, u"Rockville"),
-        x509.NameAttribute(NameOID.ORGANIZATION_NAME, u"self"),
-        x509.NameAttribute(NameOID.COMMON_NAME, u"self-signed-root"),
+        x509.NameAttribute(NameOID.COUNTRY_NAME, cert_info.country),
+        x509.NameAttribute(NameOID.STATE_OR_PROVINCE_NAME, cert_info.province),
+        x509.NameAttribute(NameOID.LOCALITY_NAME, cert_info.locality),
+        x509.NameAttribute(NameOID.ORGANIZATION_NAME, cert_info.organization),
+        x509.NameAttribute(NameOID.COMMON_NAME, cert_info.common_name),
     ])
 
     root_cert = x509.CertificateBuilder().subject_name(
@@ -50,16 +61,16 @@ def generate_root_certificate(root_key):
 
     return root_cert, root_cert.public_bytes(serialization.Encoding.PEM)
 
-def generate_server_certificate(server_key, root_cert_obj, root_key):
+def generate_server_certificate(server_key, root_cert_obj, root_key, cert_info):
     """
     Generates a server certificate signed by the provided root certificate.
     """
     subject = x509.Name([
-        x509.NameAttribute(NameOID.COUNTRY_NAME, u"US"),
-        x509.NameAttribute(NameOID.STATE_OR_PROVINCE_NAME, u"MD"),
-        x509.NameAttribute(NameOID.LOCALITY_NAME, u"Rockville"),
-        x509.NameAttribute(NameOID.ORGANIZATION_NAME, u"self"),
-        x509.NameAttribute(NameOID.COMMON_NAME, u"127.0.0.1"),
+        x509.NameAttribute(NameOID.COUNTRY_NAME, cert_info.country),
+        x509.NameAttribute(NameOID.STATE_OR_PROVINCE_NAME, cert_info.province),
+        x509.NameAttribute(NameOID.LOCALITY_NAME, cert_info.locality),
+        x509.NameAttribute(NameOID.ORGANIZATION_NAME, cert_info.organization),
+        x509.NameAttribute(NameOID.COMMON_NAME, cert_info.common_name),
     ])
 
     server_cert = x509.CertificateBuilder().subject_name(
@@ -92,23 +103,20 @@ def save_to_file(data, filename):
     with open(filename, 'wb') as f:
         f.write(data)
 
-def main(certs_dir="./certs"):
-    """
-    Generates a server key, server certificate signed by the root certificate,
-    root key, and root certificate. Saves them in the specified directory.
-    """
-    if not os.path.exists(certs_dir):
-        os.makedirs(certs_dir)
+def main(cert_info, output_dir="./certs"):
+
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
 
     # Generate root key and self-signed root certificate
     root_key = generate_private_key()
-    root_cert_obj, root_cert_pem = generate_root_certificate(root_key)
+    root_cert_obj, root_cert_pem = generate_root_certificate(root_key, cert_info)
 
     # Generate server key
     server_key = generate_private_key()
 
     # Generate server certificate signed by the root certificate
-    server_cert = generate_server_certificate(server_key, root_cert_obj, root_key)
+    server_cert = generate_server_certificate(server_key, root_cert_obj, root_key, cert_info)
 
     # Convert keys to PEM format for saving
     root_key_pem = root_key.private_bytes(
@@ -124,10 +132,29 @@ def main(certs_dir="./certs"):
     )
 
     # Save files
-    save_to_file(root_key_pem, os.path.join(certs_dir, "root_key.pem"))
-    save_to_file(root_cert_pem, os.path.join(certs_dir, "root_cert.pem"))
-    save_to_file(server_key_pem, os.path.join(certs_dir, "server_key.pem"))
-    save_to_file(server_cert, os.path.join(certs_dir, "server_cert.pem"))
+    save_to_file(root_key_pem, os.path.join(output_dir, "root_key.pem"))
+    save_to_file(root_cert_pem, os.path.join(output_dir, "root_cert.pem"))
+    save_to_file(server_key_pem, os.path.join(output_dir, "server_key.pem"))
+    save_to_file(server_cert, os.path.join(output_dir, "server_cert.pem"))
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="Generate TLS Certificates")
+    parser.add_argument("--country", required=True, help="Country code")
+    parser.add_argument("--province", required=True, help="Province or state")
+    parser.add_argument("--locality", required=True, help="Locality or city")
+    parser.add_argument("--organization", required=True, help="Organization name")
+    parser.add_argument("--common_name", required=True, help="Common name (domain)")
+    return parser.parse_args()
 
 if __name__ == "__main__":
-    main()
+    args = parse_args()
+    cert_info = CertInfo(
+        country=args.country,
+        province=args.province,
+        locality=args.locality,
+        organization=args.organization,
+        common_name=args.common_name,
+    )
+    print(cert_info)
+    main(cert_info)
+

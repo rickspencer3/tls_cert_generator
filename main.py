@@ -28,9 +28,8 @@ class CertInfo:
             f"  Locality: {self.locality}\n"
             f"  Organization: {self.organization}\n"
             f"  Common Name: {self.common_name}\n"
-            f"  Certificate Authority: {self.ca_name}"\n
-            f"Subject Alt Names: {self.subject_alt_names}"
-        )
+            f"  Certificate Authority: {self.ca_name}\n"
+            f"  Subject Alt Names: {self.subject_alt_names}")
 
 def _generate_private_key():
     """

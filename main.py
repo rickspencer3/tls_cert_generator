@@ -18,6 +18,8 @@ class CertInfo:
     organization: str
     common_name: str
     ca_name: str
+    subject_alt_names: list = None 
+
     def __str__(self):
         return (
             f"Certificate Information:\n"
@@ -26,8 +28,8 @@ class CertInfo:
             f"  Locality: {self.locality}\n"
             f"  Organization: {self.organization}\n"
             f"  Common Name: {self.common_name}\n"
-            f"  Certificate Authority: {self.ca_name}"
-        )
+            f"  Certificate Authority: {self.ca_name}\n"
+            f"  Subject Alt Names: {self.subject_alt_names}")
 
 def _generate_private_key():
     """
@@ -83,10 +85,25 @@ def _generate_server_certificate(*, server_key, root_cert_obj, root_key, cert_in
         x509.NameAttribute(NameOID.ORGANIZATION_NAME, cert_info.organization),
         x509.NameAttribute(NameOID.COMMON_NAME, cert_info.common_name),
     ])
-    san = x509.SubjectAlternativeName([
-        x509.IPAddress(ipaddress.IPv4Address(cert_info.common_name))
-    ])
-    print(f"Adding SAN: {san}")
+
+
+    san_list = []
+    if cert_info.subject_alt_names:
+        for name in cert_info.subject_alt_names:
+            print("**********")
+            print(name)
+            print("-------")
+            try:
+                san_list.append(x509.IPAddress(ipaddress.IPv4Address(name)))
+            except ipaddress.AddressValueError:
+                san_list.append(x509.DNSName(name))
+    else:
+        try:
+            san_list.append(x509.IPAddress(ipaddress.IPv4Address(cert_info.common_name)))
+        except ipaddress.AddressValueError:
+            san_list.append(x509.DNSName(cert_info.common_name))
+
+    san = x509.SubjectAlternativeName(san_list)
     
     server_cert = x509.CertificateBuilder().subject_name(
         subject
@@ -104,9 +121,6 @@ def _generate_server_certificate(*, server_key, root_cert_obj, root_key, cert_in
         x509.BasicConstraints(ca=False, path_length=None), critical=True,
     ).add_extension( san,
         critical=False,).sign(root_key, hashes.SHA256(), default_backend())
-    
-    san_extension = server_cert.extensions[-1].value  # Access the last extension added
-    print("SAN:", san_extension)
 
     return server_cert.public_bytes(serialization.Encoding.PEM)
 
@@ -114,7 +128,7 @@ def _save_to_file(data, filename):
     """
     Saves the given data to a file.
     """
-    print(filename)
+
     with open(filename, 'wb') as f:
         f.write(data)
 
@@ -150,8 +164,6 @@ def _main(cert_info, output_dir="./certs"):
         encryption_algorithm=serialization.NoEncryption()
     )
 
-    # Save files
-    print("saving generated TLS files")
     _save_to_file(root_key_pem, os.path.join(output_dir, "root_key.pem"))
     _save_to_file(root_cert_pem, os.path.join(output_dir, "root_cert.pem"))
     _save_to_file(server_key_pem, os.path.join(output_dir, "server_key.pem"))
@@ -165,18 +177,26 @@ def _parse_args():
     parser.add_argument("--organization", required=True, help="Organization name")
     parser.add_argument("--common_name", required=True, help="Common name (domain)")
     parser.add_argument("--ca_name", required=True, help="Name to use as the CA in the root certificate")
+    parser.add_argument("--subject_alt_names", default=None, help="Space-separated list of SANs (IPs/DNS names, optional)")
+
     return parser.parse_args()
 
 if __name__ == "__main__":
     args = _parse_args()
+    
+    subject_alt_names = args.subject_alt_names.split() if args.subject_alt_names else []
+    if args.common_name not in subject_alt_names:
+        subject_alt_names.append(args.common_name)
+
     cert_info = CertInfo(
         country=args.country,
         province=args.province,
         locality=args.locality,
         organization=args.organization,
         common_name=args.common_name,
-        ca_name=args.ca_name
+        ca_name=args.ca_name,
+        subject_alt_names=subject_alt_names
     )
-    print(cert_info)
+
     _main(cert_info)
 

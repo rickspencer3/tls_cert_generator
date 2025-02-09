@@ -90,9 +90,6 @@ def _generate_server_certificate(*, server_key, root_cert_obj, root_key, cert_in
     san_list = []
     if cert_info.subject_alt_names:
         for name in cert_info.subject_alt_names:
-            print("**********")
-            print(name)
-            print("-------")
             try:
                 san_list.append(x509.IPAddress(ipaddress.IPv4Address(name)))
             except ipaddress.AddressValueError:

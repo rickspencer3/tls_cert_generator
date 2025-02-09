@@ -28,7 +28,8 @@ class CertInfo:
             f"  Locality: {self.locality}\n"
             f"  Organization: {self.organization}\n"
             f"  Common Name: {self.common_name}\n"
-            f"  Certificate Authority: {self.ca_name}"
+            f"  Certificate Authority: {self.ca_name}"\n
+            f"Subject Alt Names: {self.subject_alt_names}"
         )
 
 def _generate_private_key():
@@ -187,7 +188,7 @@ if __name__ == "__main__":
     subject_alt_names = args.subject_alt_names.split() if args.subject_alt_names else []
     if args.common_name not in subject_alt_names:
         subject_alt_names.append(args.common_name)
-        
+
     cert_info = CertInfo(
         country=args.country,
         province=args.province,

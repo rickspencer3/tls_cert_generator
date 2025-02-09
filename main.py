@@ -175,7 +175,7 @@ def _parse_args():
     parser.add_argument("--common_name", required=True, help="Common name (domain)")
     parser.add_argument("--ca_name", required=True, help="Name to use as the CA in the root certificate")
     parser.add_argument("--subject_alt_names", default=None, help="Space-separated list of SANs (IPs/DNS names, optional)")
-
+    parser.add_argument("--output_dir", default="./certs", help="Directory to save generated certificates")
     return parser.parse_args()
 
 if __name__ == "__main__":
@@ -195,5 +195,5 @@ if __name__ == "__main__":
         subject_alt_names=subject_alt_names
     )
 
-    _main(cert_info)
+    _main(cert_info, args.output_dir)
 
